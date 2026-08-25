@@ -28,19 +28,16 @@ INTERESTING_PROPERTIES = [
 class GetProp(AndroidArtifact):
     def parse(self, entry: str) -> None:
         self.results: List[Dict[str, str]] = []
-        rxp = re.compile(r"^\[([^]]+)\]: \[(.*)\]$")
+        # A property value may span several lines: persist.sys.boot.reason.history
+        # prints one boot per line. Matching the whole section instead of line by
+        # line lets a value run to the first closing bracket that ends a line.
+        rxp = re.compile(
+            r"^[ \t]*\[([^]]+)\]: \[(.*?)\][ \t\r]*$",
+            re.MULTILINE | re.DOTALL,
+        )
 
-        for line in entry.splitlines():
-            line = line.strip()
-            if line == "":
-                continue
-
-            match = rxp.match(line)
-            if not match:
-                continue
-
-            prop_entry = {"name": match.group(1), "value": match.group(2)}
-            self.results.append(prop_entry)
+        for name, value in rxp.findall(entry):
+            self.results.append({"name": name, "value": value})
 
     def get_device_timezone(self) -> str | None:
         """
