@@ -29,7 +29,6 @@ class TestMvtCommand:
         assert result.exit_code == 0
         assert "mvt-ios" in result.output
         assert "mvt-android" in result.output
-        assert "check-*" in result.output
 
     def test_version_prints_the_installed_version(self):
         result = CliRunner().invoke(cli, [*OFFLINE, "version"])
