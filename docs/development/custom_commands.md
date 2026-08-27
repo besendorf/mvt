@@ -73,11 +73,7 @@ rather than in MVT's own `config.yaml`.
 
 ### Commands on `mvt`
 
-The `mvt` command hosts what belongs to neither platform: `version`,
-`completion`, `plugins` and `download-iocs`. A plugin command which is not
-about the acquisition of one platform, such as one which configures the plugin
-or synchronizes the indicators it uses, belongs there too, in the
-`mvt.cli_plugins` group:
+A MVT plugin command can also add sub-commands to the base `mvt` command. This can be used for commands which are not tied to a particular forensic platform:
 
 ```toml
 [project.entry-points."mvt.cli_plugins"]

@@ -47,10 +47,8 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 def cli(ctx, disable_update_check, disable_indicator_update_check, verbose):
     """Mobile Verification Toolkit.
 
-    mvt-ios and mvt-android run the forensic analysis of an acquisition: each
-    provides the check-* commands of its platform. This command hosts what
-    belongs to neither platform; run it without a command to see the installed
-    version and the list of what it offers.
+    The 'mvt-ios' and 'mvt-android' CLI commands are used to perform
+    forensic analysis on IOS and Android devices.
     """
     ctx.ensure_object(dict)
     ctx.obj["disable_version_check"] = disable_update_check
