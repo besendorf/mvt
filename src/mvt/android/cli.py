@@ -14,7 +14,6 @@ from mvt.common.cli_plugins import (
     load_cli_commands_option,
     register_cli_plugins,
 )
-from mvt.common.cmd_check_iocs import CmdCheckIOCS
 from mvt.common.help import (
     HELP_MSG_ANDROID_BACKUP_PASSWORD,
     HELP_MSG_CHECK_ADB_REMOVED,
@@ -40,17 +39,12 @@ from mvt.common.help import (
     HELP_MSG_VERSION,
     HELP_MSG_VIRUS_TOTAL,
 )
-from mvt.common.logo import logo
-from mvt.common.module_loader import CustomModuleLoadError, load_custom_modules
-from mvt.common.updates import IndicatorsUpdates
 from mvt.common.utils import init_logging, set_verbose_logging
 
-from .cmd_check_androidqf import CmdAndroidCheckAndroidQF
-from .cmd_check_backup import CmdAndroidCheckBackup
-from .cmd_check_bugreport import CmdAndroidCheckBugreport
-from .cmd_check_intrusion_logs import CmdAndroidCheckIntrusionLogs
-from .command_modules import ANDROID_CHECK_IOCS_MODULES
-from .modules.backup.helpers import cli_load_android_backup_password
+# The commands import what they run only when they are invoked. This module is
+# imported at every start of mvt-android, including by shell completion on
+# every keystroke, so importing it must do no more than build the command tree:
+# the forensic modules, the backup parsers and the update checks stay out of it.
 
 init_logging()
 log = logging.getLogger("mvt")
@@ -74,6 +68,8 @@ def _get_verbose(ctx):
 
 
 def _load_custom_modules(load_module):
+    from mvt.common.module_loader import CustomModuleLoadError, load_custom_modules
+
     try:
         return load_custom_modules(load_module)
     except CustomModuleLoadError as exc:
@@ -101,6 +97,9 @@ def cli(ctx, disable_update_check, disable_indicator_update_check, verbose):
     ctx.obj["disable_indicator_check"] = disable_indicator_update_check
     ctx.obj["verbose"] = verbose
     set_verbose_logging(verbose)
+
+    from mvt.common.logo import logo
+
     logo(
         disable_version_check=disable_update_check,
         disable_indicator_check=disable_indicator_update_check,
@@ -164,6 +163,8 @@ def check_bugreport(
     verbose,
     bugreport_path,
 ):
+    from .cmd_check_bugreport import CmdAndroidCheckBugreport
+
     set_verbose_logging(verbose or _get_verbose(ctx))
     custom_modules = _load_custom_modules(load_module)
     # Always generate hashes as bug reports are small.
@@ -233,6 +234,9 @@ def check_backup(
     verbose,
     backup_path,
 ):
+    from .cmd_check_backup import CmdAndroidCheckBackup
+    from .modules.backup.helpers import cli_load_android_backup_password
+
     set_verbose_logging(verbose or _get_verbose(ctx))
     custom_modules = _load_custom_modules(load_module)
 
@@ -311,6 +315,9 @@ def check_androidqf(
     verbose,
     androidqf_path,
 ):
+    from .cmd_check_androidqf import CmdAndroidCheckAndroidQF
+    from .modules.backup.helpers import cli_load_android_backup_password
+
     set_verbose_logging(verbose or _get_verbose(ctx))
     custom_modules = _load_custom_modules(load_module)
 
@@ -393,6 +400,8 @@ def check_intrusion_logs(
     verbose,
     logs_path,
 ):
+    from .cmd_check_intrusion_logs import CmdAndroidCheckIntrusionLogs
+
     set_verbose_logging(verbose or _get_verbose(ctx))
     custom_modules = _load_custom_modules(load_module)
 
@@ -446,6 +455,10 @@ def check_intrusion_logs(
 @click.argument("FOLDER", type=click.Path(exists=True))
 @click.pass_context
 def check_iocs(ctx, iocs, list_modules, module, load_module, folder):
+    from mvt.common.cmd_check_iocs import CmdCheckIOCS
+
+    from .command_modules import ANDROID_CHECK_IOCS_MODULES
+
     custom_modules = _load_custom_modules(load_module)
     cmd = CmdCheckIOCS(
         target_path=folder,
@@ -472,6 +485,8 @@ def check_iocs(ctx, iocs, list_modules, module, load_module, folder):
 # ==============================================================================
 @cli.command("download-iocs", context_settings=CONTEXT_SETTINGS, help=HELP_MSG_STIX2)
 def download_indicators():
+    from mvt.common.updates import IndicatorsUpdates
+
     ioc_updates = IndicatorsUpdates()
     ioc_updates.update()
 
