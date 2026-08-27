@@ -14,10 +14,7 @@ from mvt.common.cli_plugins import (
     load_cli_commands_option,
     register_cli_plugins,
 )
-from mvt.common.cmd_check_iocs import CmdCheckIOCS
-from mvt.common.logo import logo
 from mvt.common.options import MutuallyExclusiveOption
-from mvt.common.updates import IndicatorsUpdates
 from mvt.common.utils import (
     generate_hashes_from_path,
     init_logging,
@@ -47,13 +44,12 @@ from mvt.common.help import (
     HELP_MSG_DISABLE_UPDATE_CHECK,
     HELP_MSG_DISABLE_INDICATOR_UPDATE_CHECK,
 )
-from mvt.common.module_loader import CustomModuleLoadError, load_custom_modules
 from mvt.common.password import prompt_password
-from .cmd_check_backup import CmdIOSCheckBackup
-from .cmd_check_fs import CmdIOSCheckFS
-from .cmd_check_sysdiagnose import CmdIOSCheckSysdiagnose
-from .decrypt import DecryptBackup
-from .command_modules import IOS_CHECK_IOCS_MODULES
+
+# The commands import what they run only when they are invoked. This module is
+# imported at every start of mvt-ios, including by shell completion on every
+# keystroke, so importing it must do no more than build the command tree: the
+# forensic modules, the backup decryption and the update checks stay out of it.
 
 init_logging()
 log = logging.getLogger("mvt")
@@ -79,6 +75,8 @@ def _get_verbose(ctx):
 
 
 def _load_custom_modules(load_module):
+    from mvt.common.module_loader import CustomModuleLoadError, load_custom_modules
+
     try:
         return load_custom_modules(load_module)
     except CustomModuleLoadError as exc:
@@ -106,6 +104,9 @@ def cli(ctx, disable_update_check, disable_indicator_update_check, verbose):
     ctx.obj["disable_indicator_check"] = disable_indicator_update_check
     ctx.obj["verbose"] = verbose
     set_verbose_logging(verbose)
+
+    from mvt.common.logo import logo
+
     logo(
         disable_version_check=disable_update_check,
         disable_indicator_check=disable_indicator_update_check,
@@ -146,6 +147,8 @@ def version():
 @click.argument("BACKUP_PATH", type=click.Path(exists=True))
 @click.pass_context
 def decrypt_backup(ctx, destination, password, key_file, hashes, backup_path):
+    from .decrypt import DecryptBackup
+
     backup = DecryptBackup(backup_path, destination)
 
     if key_file:
@@ -209,6 +212,8 @@ def decrypt_backup(ctx, destination, password, key_file, hashes, backup_path):
 )
 @click.argument("BACKUP_PATH", type=click.Path(exists=True))
 def extract_key(password, key_file, backup_path):
+    from .decrypt import DecryptBackup
+
     backup = DecryptBackup(backup_path)
 
     if password:
@@ -276,6 +281,8 @@ def check_backup(
     verbose,
     backup_path,
 ):
+    from .cmd_check_backup import CmdIOSCheckBackup
+
     set_verbose_logging(verbose or _get_verbose(ctx))
     module_options = {"fast_mode": fast}
     custom_modules = _load_custom_modules(load_module)
@@ -345,6 +352,8 @@ def check_fs(
     verbose,
     dump_path,
 ):
+    from .cmd_check_fs import CmdIOSCheckFS
+
     set_verbose_logging(verbose or _get_verbose(ctx))
     module_options = {"fast_mode": fast}
     custom_modules = _load_custom_modules(load_module)
@@ -413,6 +422,8 @@ def check_sysdiagnose(
     verbose,
     sysdiagnose_path,
 ):
+    from .cmd_check_sysdiagnose import CmdIOSCheckSysdiagnose
+
     set_verbose_logging(verbose or _get_verbose(ctx))
     custom_modules = _load_custom_modules(load_module)
     cmd = CmdIOSCheckSysdiagnose(
@@ -467,6 +478,10 @@ def check_sysdiagnose(
 @click.argument("FOLDER", type=click.Path(exists=True))
 @click.pass_context
 def check_iocs(ctx, iocs, list_modules, module, load_module, folder):
+    from mvt.common.cmd_check_iocs import CmdCheckIOCS
+
+    from .command_modules import IOS_CHECK_IOCS_MODULES
+
     custom_modules = _load_custom_modules(load_module)
     cmd = CmdCheckIOCS(
         target_path=folder,
@@ -493,6 +508,8 @@ def check_iocs(ctx, iocs, list_modules, module, load_module, folder):
 # ==============================================================================
 @cli.command("download-iocs", context_settings=CONTEXT_SETTINGS, help=HELP_MSG_STIX2)
 def download_iocs():
+    from mvt.common.updates import IndicatorsUpdates
+
     ioc_updates = IndicatorsUpdates()
     ioc_updates.update()
 

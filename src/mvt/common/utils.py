@@ -14,7 +14,6 @@ from dataclasses import asdict, is_dataclass
 from typing import Any, Iterator, Union
 
 from .log import MVTLogHandler
-from mvt.common.config import settings
 
 
 class CustomJSONEncoder(json.JSONEncoder):
@@ -272,6 +271,10 @@ def set_verbose_logging(verbose: bool = False):
 
 def exec_or_profile(module, globals, locals):
     """Hook for profiling MVT modules"""
+    # Imported here so that the CLI modules, which import this one at start-up,
+    # do not load the settings (and pydantic) before a command runs.
+    from .config import settings
+
     if settings.PROFILE:
         cProfile.runctx(module, globals, locals)
     else:
