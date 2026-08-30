@@ -15,7 +15,9 @@ from typing import Iterable
 
 import click
 
-from .module_loader import CUSTOM_COMMAND_MODULE_PREFIX
+# This module is imported by every CLI at start-up, and by shell completion on
+# every keystroke, so it must stay cheap: nothing here may import the module
+# machinery (mvt.common.module_loader and what it pulls in).
 
 IOS_CLI_PLUGIN_GROUP = "mvt.ios.cli_plugins"
 ANDROID_CLI_PLUGIN_GROUP = "mvt.android.cli_plugins"
@@ -24,6 +26,9 @@ NEUTRAL_CLI_PLUGIN_GROUP = "mvt.cli_plugins"
 MVT_CUSTOM_COMMANDS_ENV = "MVT_CUSTOM_COMMANDS"
 MVT_IOS_CUSTOM_COMMANDS_ENV = "MVT_IOS_CUSTOM_COMMANDS"
 MVT_ANDROID_CUSTOM_COMMANDS_ENV = "MVT_ANDROID_CUSTOM_COMMANDS"
+# Prefix of the import name given to a command file loaded from a path. Shared
+# with module_loader, which recognises such files when naming their loggers.
+CUSTOM_COMMAND_MODULE_PREFIX = "_mvt_custom_command_"
 
 log = logging.getLogger(__name__)
 

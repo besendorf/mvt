@@ -18,6 +18,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Iterable, Optional
 
+from .cli_plugins import CUSTOM_COMMAND_MODULE_PREFIX
 from .module import MVTModule
 from .version import MVT_VERSION
 
@@ -27,8 +28,6 @@ EXTERNAL_LOGGER_NAMESPACE = "mvt.ext"
 PLUGIN_PACKAGE_PREFIX = "mvt_plugin_"
 _ORIGIN_ATTRIBUTE = "_mvt_module_origin"
 _PATH_MODULE_PREFIX = "_mvt_custom_module_"
-# Shared with cli_plugins, which names a loaded command file this way.
-CUSTOM_COMMAND_MODULE_PREFIX = "_mvt_custom_command_"
 _LOADED_FILE_DIGEST = re.compile(r"_[0-9a-f]{16}$")
 log = logging.getLogger(__name__)
 
