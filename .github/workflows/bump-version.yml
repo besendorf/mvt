@@ -1,0 +1,43 @@
+name: Bump version
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 8 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: weekly-version-bump
+  cancel-in-progress: false
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set version from the current date
+        id: version
+        run: |
+          version="$(date --utc +'%Y.%-m.%-d')"
+          sed --in-place --regexp-extended \
+            's/^MVT_VERSION = "[^"]+"$/MVT_VERSION = "'"${version}"'"/' \
+            src/mvt/common/version.py
+          grep --fixed-strings --line-regexp \
+            "MVT_VERSION = \"${version}\"" src/mvt/common/version.py
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          title: "[auto] Bump version to ${{ steps.version.outputs.version }}"
+          commit-message: "Bump version to ${{ steps.version.outputs.version }}"
+          branch: auto/weekly-version-bump
+          delete-branch: true
+          body: |
+            This is an automated weekly pull request to update MVT's calendar version.
+          add-paths: |
+            src/mvt/common/version.py
+          labels: |
+            automated pr
