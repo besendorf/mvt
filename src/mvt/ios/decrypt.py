@@ -11,6 +11,7 @@ import os.path
 import plistlib
 import shutil
 import sqlite3
+import sys
 import tempfile
 from concurrent.futures import (
     ALL_COMPLETED,
@@ -19,7 +20,7 @@ from concurrent.futures import (
     ThreadPoolExecutor,
     wait,
 )
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Optional
 
 from iphone_backup_decrypt import EncryptedBackup
@@ -27,6 +28,14 @@ from iphone_backup_decrypt import google_iphone_dataprotection
 from iphone_backup_decrypt.utils import FilePlist
 
 from .decrypt_config import DEFAULT_DECRYPT_WORKERS, MAX_DECRYPT_WORKERS
+
+if sys.version_info >= (3, 13):
+    from ntpath import isreserved as _is_reserved_windows_path
+else:
+
+    def _is_reserved_windows_path(part: str) -> bool:
+        return PureWindowsPath(part).is_reserved()
+
 
 log = logging.getLogger(__name__)
 
@@ -123,9 +132,7 @@ class MVTEncryptedBackup(EncryptedBackup):
         file_plist = FilePlist(file_bplist)
 
         if file_plist.encryption_key is None:
-            source_filename = os.path.join(
-                self._backup_directory, file_id[:2], file_id
-            )
+            source_filename = os.path.join(self._backup_directory, file_id[:2], file_id)
             shutil.copy2(source_filename, output_filename)
             return
 
@@ -192,16 +199,19 @@ class DecryptBackup:
         backup_path: str,
         dest_path: Optional[str] = None,
         max_workers: int = DEFAULT_DECRYPT_WORKERS,
+        restore_paths: bool = False,
     ) -> None:
         """Decrypts an encrypted iOS backup.
         :param backup_path: Path to the encrypted backup folder
         :param dest_path: Path to the folder where to store the decrypted backup
+        :param restore_paths: Also export files under restored/domain/relativePath
         """
         self.backup_path = os.path.abspath(backup_path)
         self.dest_path = dest_path
         if not 1 <= max_workers <= MAX_DECRYPT_WORKERS:
             raise ValueError(f"max_workers must be between 1 and {MAX_DECRYPT_WORKERS}")
         self.max_workers = max_workers
+        self.restore_paths = restore_paths
         self._backup: Optional[MVTEncryptedBackup] = None
         self._decryption_key: Optional[str] = None
 
@@ -230,6 +240,49 @@ class DecryptBackup:
             output_path.parent,
             file_id,
         )
+        if self.restore_paths:
+            try:
+                self._restore_file(output_path, domain, relative_path)
+            except (OSError, ValueError, RuntimeError) as exc:
+                # An optional export must not prevent the standard decrypted
+                # backup from being completed, including the remaining files.
+                log.warning(
+                    "Could not restore file %r [%r]: %s", relative_path, domain, exc
+                )
+
+    def _restore_file(self, source_path: Path, domain: str, relative_path: str) -> None:
+        assert self.dest_path is not None
+        if not isinstance(domain, str) or not isinstance(relative_path, str):
+            raise ValueError("Domain and relative path must be strings")
+        parts = [domain, *relative_path.split("/")]
+        if "/" in domain or any(
+            not part
+            or part in (".", "..")
+            or "\\" in part
+            or "\0" in part
+            or PureWindowsPath(part).drive
+            for part in parts
+        ):
+            raise ValueError("Unsafe domain or relative path")
+        if os.name == "nt" and any(
+            _is_reserved_windows_path(part)
+            or part.endswith((".", " "))
+            or any(ord(char) < 32 or char in '<>:"|?*' for char in part)
+            for part in parts
+        ):
+            raise ValueError("Path cannot be represented safely on Windows")
+
+        restored_root = Path(self.dest_path).resolve() / "restored"
+        restored_path = restored_root.joinpath(*parts)
+        if not restored_path.resolve().is_relative_to(restored_root):
+            raise ValueError("Restored path would escape the export directory")
+        restored_path.parent.mkdir(parents=True, exist_ok=True)
+        # Exclusive creation also handles collisions between concurrent files,
+        # including case-insensitive filenames and existing symlinks.
+        with source_path.open("rb") as source, restored_path.open("xb") as target:
+            shutil.copyfileobj(source, target)
+        shutil.copystat(source_path, restored_path)
+        log.info("Restored file %s [%s] to %s", relative_path, domain, restored_path)
 
     @staticmethod
     def _wait_for_files(
@@ -390,10 +443,7 @@ class DecryptBackup:
             self._backup.test_decryption()
         except Exception as exc:
             self._backup = None
-            if (
-                isinstance(exc, ValueError)
-                and "passphrase" in str(exc).lower()
-            ):
+            if isinstance(exc, ValueError) and "passphrase" in str(exc).lower():
                 log.critical("Failed to decrypt backup. Password is probably wrong.")
             elif (
                 isinstance(exc, FileNotFoundError)

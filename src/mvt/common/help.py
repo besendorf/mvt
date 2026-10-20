@@ -40,6 +40,10 @@ HELP_MSG_BACKUP_DESTINATION = (
     "Path to the folder where the decrypted backup should be stored"
 )
 HELP_MSG_DECRYPT_JOBS = "Number of files to decrypt concurrently"
+HELP_MSG_RESTORE_PATHS = (
+    "Also copy decrypted files to restored/<domain>/<original path> inside the "
+    "destination (requires additional disk space)"
+)
 HELP_MSG_IOS_BACKUP_PASSWORD = (
     "Password to use to decrypt the backup (or, set the {MVT_IOS_BACKUP_PASSWORD} "
     "environment variable)"

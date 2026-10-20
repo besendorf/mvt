@@ -58,6 +58,32 @@ You can specify the password in the environment variable `MVT_IOS_BACKUP_PASSWOR
 MVT_IOS_BACKUP_PASSWORD="mypassword" mvt-ios decrypt-backup -d /path/to/decrypted /path/to/backup
 ```
 
+### Restoring readable file paths
+
+Add `--restore-paths` to also export decrypted files with their original names and
+directory structure:
+
+```bash
+mvt-ios decrypt-backup --restore-paths -d /path/to/decrypted /path/to/backup
+```
+
+The additional copies are written to `restored/<domain>/<relativePath>` inside
+the destination. For example, a file from `HomeDomain` with the manifest path
+`Library/SMS/sms.db` becomes
+`/path/to/decrypted/restored/HomeDomain/Library/SMS/sms.db`. Each backup domain
+gets its own directory, so files from different applications stay separate.
+These are the paths recorded in the backup, which may not describe the device's
+complete filesystem.
+
+The standard decrypted backup, including its hexadecimal filenames and manifest,
+is still written. Use `/path/to/decrypted` for `check-backup`; the `restored`
+directory is an additional export for manual inspection. Allow extra disk space
+for the additional copies.
+
+MVT warns and skips an export if its path is unsafe, unsupported by the host
+filesystem, or already occupied. Existing exported files are never overwritten.
+The corresponding file remains available in the standard decrypted backup.
+
 ## Run `mvt-ios` on a Backup
 
 Once you have a decrypted backup available for analysis you can use the `check-backup` subcommand:

@@ -25,6 +25,7 @@ from mvt.common.help import (
     HELP_MSG_DECRYPT_BACKUP,
     HELP_MSG_BACKUP_DESTINATION,
     HELP_MSG_DECRYPT_JOBS,
+    HELP_MSG_RESTORE_PATHS,
     HELP_MSG_IOS_BACKUP_PASSWORD,
     HELP_MSG_BACKUP_KEYFILE,
     HELP_MSG_HASHES,
@@ -156,12 +157,17 @@ def version():
     help=HELP_MSG_BACKUP_KEYFILE,
 )
 @click.option("--hashes", "-H", is_flag=True, help=HELP_MSG_HASHES)
+@click.option("--restore-paths", is_flag=True, help=HELP_MSG_RESTORE_PATHS)
 @click.argument("BACKUP_PATH", type=click.Path(exists=True))
 @click.pass_context
-def decrypt_backup(ctx, destination, jobs, password, key_file, hashes, backup_path):
+def decrypt_backup(
+    ctx, destination, jobs, password, key_file, hashes, restore_paths, backup_path
+):
     from .decrypt import DecryptBackup
 
-    backup = DecryptBackup(backup_path, destination, max_workers=jobs)
+    backup = DecryptBackup(
+        backup_path, destination, max_workers=jobs, restore_paths=restore_paths
+    )
 
     if key_file:
         if MVT_IOS_BACKUP_PASSWORD in os.environ:
